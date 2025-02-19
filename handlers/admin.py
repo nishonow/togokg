@@ -41,7 +41,7 @@ async def no_msg_all(call: CallbackQuery, state: FSMContext):
 async def msg_to_all(message: types.Message, state: FSMContext):
     total_users_id = await get_user_ids()  # Function to fetch all user IDs
     msg_id = message.message_id
-    from_chat = message.chat.id  # The ID of the chat where the message originated
+    from_chat = message.chat.id
     success = 0
     error = 0
 
@@ -54,12 +54,11 @@ async def msg_to_all(message: types.Message, state: FSMContext):
 
 
             if (idx + 1) % 30 == 0:
-                await asyncio.sleep(1)  # 1 second delay after 30 messages
+                await asyncio.sleep(1)
 
         except Exception as e:
             error += 1
 
-    # Inform the admin about the results
     await message.answer(f"✅ Ваше сообщение отправлено всем пользователям.\n\n"
                          f"Отправлено: {success}\nНе отправлено: {error}")
     await state.finish()
