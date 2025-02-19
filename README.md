@@ -18,5 +18,3 @@ This bot is built using:
 ## Contributing
 Feel free to fork this repository and create pull requests for any improvements or fixes.
 
-## License
-This project is licensed under the [MIT License](LICENSE).
