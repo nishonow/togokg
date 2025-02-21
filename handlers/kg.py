@@ -1,235 +1,179 @@
-from aiogram import types
-from aiogram.types import CallbackQuery
-from loader import dp, bot
-from core.keys import kg_menu_keyboard, contact_kg, kg_payment_methods_keyboard, kg_bonus_replenishment_keyboard, kg_fine_amount_keyboard, kg_scooter_problems_keyboard, kg_registration_keyboard
+from aiogram.types import CallbackQuery, Message
+from loader import dp, bot, db
+from core.keys import (
+    kg_menu_keyboard,
+    kg_payment_methods_keyboard,
+    kg_bonus_replenishment_keyboard,
+    kg_fine_amount_keyboard,
+    kg_scooter_problems_keyboard,
+    kg_registration_keyboard,
+    contact_kg, rating_keyboard
+)
 
 CHANNEL_ID = -1002276623671
+RENT_SCOOTER_ID = 11
+KG_PAYMENT_CARD = 7
+KG_PAYMENT_MBANK = 7
+KG_PAYMENT_ODENGI = 7
+KG_BONUS_CARD = 6
+KG_BONUS_ODENGI = 10
+KG_REGISTRATION_PHONE = 9
+KG_REGISTRATION_TELEGRAM = 8
 
+# RATING HANDLERS ===========================================================
+@dp.message_handler(text='/rating')
+async def rating(message: Message):
+    user_rating = await db.get_rating(message.from_user.id)
+    if user_rating != 0:
+        await message.answer(f"Сиз биздин ботту {user_rating} ⭐ менен бааладыңыз\n\nСиз бааңызды өзгөртө аласыз", reply_markup=rating_keyboard)
+    else:
+        await message.answer("Сураныч, биздин ботту баалаңыз", reply_markup=rating_keyboard)
 
-@dp.callback_query_handler(text='2')
-async def ru_meu(call: CallbackQuery):
+@dp.callback_query_handler(lambda c: c.data.startswith('r_'))
+async def save_user_rating(call: CallbackQuery):
+    rating = int(call.data.split('_')[1])
+    await db.save_rating(call.from_user.id, rating)
     await call.message.edit_reply_markup()
-    await call.message.answer("Абдан жакшы! Биз сизге кантип жардам бере алабыз?", reply_markup=kg_menu_keyboard)
+    await call.message.answer("Баалаганыңыз үчүн рахмат!")
 
-@dp.callback_query_handler(text='2.1')
-async def kg_payment_methods_handler(call: types.CallbackQuery):
+@dp.message_handler(text='/see_rating')
+async def see_rating(message: Message):
+    ratings = await db.get_all_ratings()
+    ratings = [rating[0] for rating in ratings]
+    average_rating = sum(ratings) / len(ratings)
+    await message.answer(f"Бардык баалар {len(ratings)}\n\nБиздин боттун орточо рейтинги: {average_rating} ⭐")
+
+# MENU HANDLERS ==============================================================
+@dp.callback_query_handler(text='lang_kg')
+async def kg_menu(call: CallbackQuery):
     await call.message.edit_reply_markup()
-    await call.message.answer("Төлөм ыкмаңызды тандаңыз", reply_markup=kg_payment_methods_keyboard)
+    await call.message.answer("Мыкты! Сизге кандай жардам бере алабыз?", reply_markup=kg_menu_keyboard)
 
-@dp.callback_query_handler(text='2.2')
-async def kg_scooter_rental_handler(call: types.CallbackQuery):
+# PAYMENT HANDLERS ===========================================================
+@dp.callback_query_handler(text='kg_payment_issue')
+async def kg_payment(call: CallbackQuery):
     await call.message.edit_reply_markup()
-    vidid = 11  # Replace with actual message_id
+    await call.message.answer("Төлөм ыкмасын тан��аңыз", reply_markup=kg_payment_methods_keyboard)
 
-    msg ="Скутерди ижарага алуу үчүн, видеодогудай кадамдарды кайталаңыз.\n\n"
-    msg +="Эгер дагы эле жардам керек болсо /start басыныз"
-
-    await bot.copy_message(
-        chat_id=call.message.chat.id,
-        from_chat_id=CHANNEL_ID,
-        message_id=vidid
-    )
-
-@dp.callback_query_handler(text='2.3')
-async def kg_bonus_replenishment_handler(call: types.CallbackQuery):
+@dp.callback_query_handler(text='kg_payment_card')
+async def kg_payment_card(call: CallbackQuery):
     await call.message.edit_reply_markup()
-    await call.message.answer("Төлөм ыкмаңызды тандаңыз", reply_markup=kg_bonus_replenishment_keyboard)
+    msg = "Урматтуу каардар, төлөмүңүздүн абалы дагы эле тастыктала элек. Видеодогудай кадамдарды кайталаңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз"
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=KG_PAYMENT_CARD, caption=msg)
 
-@dp.callback_query_handler(text='2.4')
-async def kg_tariffs_handler(call: types.CallbackQuery):
+@dp.callback_query_handler(text='kg_payment_mbank')
+async def kg_payment_mbank(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    msg = "Урматтуу каардар, төлөмүңүздүн абалы дагы эле тастыктала элек. Видеодогудай кадамдарды кайталаңыз. Эгер абалды сурап билүү мүмкүн болбосо, банкыңызга кайрылыңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз"
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=KG_PAYMENT_MBANK, caption=msg)
+
+@dp.callback_query_handler(text='kg_payment_odengi')
+async def kg_payment_odengi(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    msg = "Урматтуу каардар, төлөмүңүздүн абалы дагы эле тастыктала элек. Видеодогудай кадамдарды кайталаңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз"
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=KG_PAYMENT_ODENGI, caption=msg)
+
+# BONUS HANDLERS =============================================================
+@dp.callback_query_handler(text='kg_replenish_bonus')
+async def kg_bonuses(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    await call.message.answer("Бонустарды толтуруу ыкмасын тандаңыз", reply_markup=kg_bonus_replenishment_keyboard)
+
+@dp.callback_query_handler(text='kg_bonus_card')
+async def kg_bonus_card(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    msg = "Бонустарды банк картасы аркылуу толтуруу үчүн видеодогудай кадамдарды кайталаңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз"
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=KG_BONUS_CARD, caption=msg)
+
+@dp.callback_query_handler(text='kg_bonus_mbank')
+async def kg_bonus_mbank(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    msg = "Бонустарды MBank аркылуу толтуруу үчүн видеодогудай кадамдарды кайталаңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз"
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=KG_BONUS_CARD, caption=msg)
+
+@dp.callback_query_handler(text='kg_bonus_odengi')
+async def kg_bonus_odengi(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    msg = "Бонустарды O!Деньги аркылуу толтуруу үчүн видеодогудай кадамдарды кайталаңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз"
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=KG_BONUS_ODENGI, caption=msg)
+
+# SCOOTER HANDLERS ===========================================================
+@dp.callback_query_handler(text='kg_rent_scooter')
+async def kg_rent_scooter(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RENT_SCOOTER_ID, caption="Скутерди ижарага алуу үчүн видеодогудай кадамдарды кайталаңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз")
+
+@dp.callback_query_handler(text='kg_scooter_issue')
+async def kg_scooter_issues(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    await call.message.answer("Сураныч, көйгөйдү сүрөттөп бериңиз. Скутер...", reply_markup=kg_scooter_problems_keyboard)
+
+@dp.callback_query_handler(lambda c: c.data.startswith('kg_issue_'))
+async def kg_issue_handler(call: CallbackQuery):
+    issue_messages = {
+        'kg_issue_not_on': "Сураныч, бир билдирүүдө биздин операторго эсеп номериңизди, скутердин номерин жана 'Не включился' деген сөздү жазыңыз. ",
+        'kg_issue_not_driving': "Сураныч, бир билдирүүдө биздин операторго эсеп номериңизди, скутер номериңизди жана 'Скорость' деген сөздү жазыңыз. ",
+        'kg_issue_slow_speed': "Сураныч, бир билдирүүдө биздин операторго эсеп номериңизди, скутер номериңизди жана 'Скорость' деген сөздү жазыңыз. ",
+        'kg_issue_broken': "Сураныч, скутердин номерин жазып, бир билдирүүдө бузулууну сүрөттөп бериңиз. ",
+        'kg_issue_off': "Сураныч, бир билдирүүдө биздин операторго эсеп номериңизди, скутердин номериңизди жана 'Выключился' деген сөздү жазыңыз. ",
+        'kg_issue_error': "Сураныч, аккаунтуңуздун номерин, скутердин номерин жана дисплейдеги катаны биздин операторго бир билдирүү менен жазыңыз. "
+    }
+    message = issue_messages.get(call.data, "Ката кетти. Сураныч, кайра аракет кылыңыз.")
+    message += "Биринчи жетк��ликтүү оператор сиз менен байланышат! 🥰\n\n"
+    await call.message.edit_text(message, reply_markup=contact_kg)
+
+# FINE HANDLERS ==============================================================
+@dp.callback_query_handler(text='kg_fine_info')
+async def kg_fines(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    await call.message.answer("Сураныч, айып акчанын суммасын көрсөтүңүз", reply_markup=kg_fine_amount_keyboard)
+
+@dp.callback_query_handler(lambda c: c.data.startswith('kg_fine_'))
+async def kg_fine_handler(call: CallbackQuery):
+    fine_messages = {
+        'kg_fine_100': "Урматтуу каардар, сиз жетүүгө кыйын болгон жерде токтогонуңуз үчүн айып акча алдыңыз.\n\n",
+        'kg_fine_250': "Урматтуу каардар, сиз бир скутерде эки адам чогуу жүргөнүңүз үчүн айып акча алдыңыз.\n\n",
+        'kg_fine_300': "Урматтуу каардар, сиз бир скутерде үч адам чогуу жүргөнүңүз үчүн айып акча алдыңыз.\n\n",
+        'kg_fine_500': "Урматтуу каардар, сиз кызыл зонага айдаганыңыз үчүн айып акча алдыңыз.\n\n"
+    }
+    message = fine_messages.get(call.data, "Урматтуу каардар, ката кетти.\n\n")
+    message += "Эгер дагы эле жардам керек болсо /start басыныз"
+    await call.message.edit_text(message)
+
+# REGISTRATION HANDLERS ======================================================
+@dp.callback_query_handler(text='kg_registration')
+async def kg_registration(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    await call.message.answer("Сиз катталуудасыз...", reply_markup=kg_registration_keyboard)
+
+@dp.callback_query_handler(text='kg_registration_phone')
+async def kg_registration_phone(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    msg = "Урматтуу каардар, телефон номери аркылуу катталуу үчүн видеодогудай кадамдарды кайталаңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз"
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=KG_REGISTRATION_PHONE, caption=msg)
+
+@dp.callback_query_handler(text='kg_registration_telegram')
+async def kg_registration_telegram(call: CallbackQuery):
+    await call.message.edit_reply_markup()
+    msg = "Урматтуу каардар, телеграм аркылуу катталуу үчүн видеодогудай кадамдарды кайталаңыз.\n\nЭгер дагы эле жардам керек болсо /start басыныз"
+    await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=KG_REGISTRATION_TELEGRAM, caption=msg)
+
+# TARIFF HANDLERS ============================================================
+@dp.callback_query_handler(text='kg_tariff_plans')
+async def kg_tariffs(call: CallbackQuery):
     await call.message.edit_reply_markup()
     await call.message.answer(
-        "Мүнөттүк тарифтер:\n"
-        "07:00дөн 12:00гө чейин - 3,4 бонустар\n"
-        "12:00дөн 17:00гө чейин - 5,5 бонустар\n"
-        "17:00дөн 07:00гө чейин - 6,5 бонус \n\n"
+        "Минуталык тарифтер:\n"
+        "07:00дөн 12:00гө чейин - 3.4 бонус\n"
+        "12:00дөн 17:00гө чейин - 5.5 бонус\n"
+        "17:00дөн 07:00гө чейин - 6.5 бонус\n\n"
         "Тарифтик пакеттер:\n"
-        "10 мүнөт - 55 бонус\n"
-        "15 мүнөт - 75 бонус\n"
-        "25 мүнөт - 115 бонус\n"
-        "40 мүнөт - 169 бонус\n"
+        "10 Мүнөт - 55 бонус\n"
+        "15 Мүнөт - 75 бонус\n"
+        "25 Мүнөт - 115 бонус\n"
+        "40 Мүнөт - 169 бонус\n"
         "1 саат - 240 бонус\n\n"
-        "Мүнөт тарифин колдонуудан мурун, сиздин эсебиңизде 90дон ашык бонус бар экенин текшериңиз. "
-        "Скутерди мүнөттүк ылдамдыкта ижарага алууда депозит катары 90 бонус алынат же 10 бонус куйгузулат.\n\n"
+        "Минуталык тарифти колдонорд��н мурун аккаунтуңузда 100дөн ашык бонус бар экенине ынануу керек. "
+        "90 бонус депозит катары алынат, ал эми 10 бонус скутерди ишке киргизүү үчүн.\n\n"
         "Эгер дагы эле жардам керек болсо /start басыныз"
     )
-
-@dp.callback_query_handler(text='2.5')
-async def kg_fine_amount_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    await call.message.answer("Айып акчаныздын суммасын көрсөтүңүз", reply_markup=kg_fine_amount_keyboard)
-
-@dp.callback_query_handler(text='2.6')
-async def kg_scooter_problems_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    await call.message.answer("Көйгөйдү сүрөттөп бериңиз. Скутер...", reply_markup=kg_scooter_problems_keyboard)
-
-@dp.callback_query_handler(text='2.7')
-async def kg_registration_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    await call.message.answer("Сиз ... аркылуу катталасыз.", reply_markup=kg_registration_keyboard)
-
-@dp.callback_query_handler(text='2.1.1')
-async def kg_payment_card_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    vidid = 7  # Replace with actual message_id
-
-    msg = "Урматтуу каардар, төлөмүңүздүн абалы азырынча тастыктала элек. "
-    msg += "Сураныч, видеодо көрсөтүлгөндөй кадамдарды кайталаңыз.\n\n"
-    msg += "Эгер дагы эле жардам керек болсо /start басыныз"
-
-    await bot.copy_message(
-        chat_id=call.message.chat.id,
-        from_chat_id=CHANNEL_ID,
-        message_id=vidid,
-        caption=msg
-    )
-
-@dp.callback_query_handler(text='2.3.1')
-async def kg_bonus_card_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    vidid = 6  # Replace with actual message_id
-
-    msg= "Банк картасы аркылуу бонустарды толуктоо үчүн видеодогудай кадамдарды кайталаңыз.\n\n"
-    msg +="Эгер дагы эле жардам керек болсо /start басыныз"
-
-    await bot.copy_message(
-        chat_id=call.message.chat.id,
-        from_chat_id=CHANNEL_ID,
-        message_id=vidid,
-        caption=msg
-    )
-
-@dp.callback_query_handler(text='2.3.2')
-async def kg_bonus_mbank_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    vidid = 6  # Replace with actual message_id
-
-    msg ="MBank аркылуу бонустарды толуктоо үчүн видеодогудай кадамдарды кайталаңыз.\n\n"
-    msg +="Эгер дагы эле жардам керек болсо /start басыныз"
-
-    await bot.copy_message(
-        chat_id=call.message.chat.id,
-        from_chat_id=CHANNEL_ID,
-        message_id=vidid,
-        caption=msg
-    )
-
-@dp.callback_query_handler(text='2.3.3')
-async def kg_bonus_odengi_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    vidid = 10  # Replace with actual message_id
-
-    msg = "O!Деньги аркылуу бонустарды толуктоо үчүн видеодогудай кадамдарды кайталаңыз.\n\n"
-    msg += "Эгер дагы эле жардам керек болсо /start басыныз"
-    await bot.copy_message(
-        chat_id=call.message.chat.id,
-        from_chat_id=CHANNEL_ID,
-        message_id=vidid,
-        caption=msg
-    )
-
-@dp.callback_query_handler(text='2.5.1')
-async def kg_fine_100_handler(call: types.CallbackQuery):
-
-    await call.message.edit_text(
-        "Урматтуу каардар, сиз жетүүгө кыйын жерге токтотконуз үчүн айып акча алдыңыз.\n\n"
-        "Эгер дагы эле жардам керек болсо /start басыныз"
-    )
-
-@dp.callback_query_handler(text='2.5.2')
-async def kg_fine_250_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Урматтуу каардар, сиз бир скутерде 2 адам чогуу жүргөнүз үчүн айып акча алдыңыз.\n\n"
-        "Эгер дагы эле жардам керек болсо /start басыныз"
-    )
-
-@dp.callback_query_handler(text='2.5.3')
-async def kg_fine_300_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Урматтуу каардар, сиз бир скутерде 3 адам чогуу жүргөнүз үчүн айып акча алдыңыз.\n\n"
-        "Эгер дагы эле жардам керек болсо /start басыныз"
-    )
-
-@dp.callback_query_handler(text='2.5.4')
-async def kg_fine_500_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Урматтуу каардар, сиз кызыл зонага айдаганыңыз үчүн айып акча алдыңыз.\n\n"
-        "Эгер дагы эле жардам керек болсо /start басыныз"
-    )
-
-@dp.callback_query_handler(text='2.6.1')
-async def kg_issue_not_on_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Сураныч, бир билдирүүдө биздин операторго эсеп номериңизди, скутердин номерин жана 'Не включился' деген сөздү жазыңыз. "
-        "Биринчи жеткиликтүү оператор сиз менен байланышат! 🥰\n\n",
-        reply_markup=contact_kg
-    )
-
-@dp.callback_query_handler(text='2.6.2')
-async def kg_issue_not_driving_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Сураныч, бир билдирүүдө биздин операторго эсеп номериңизди, скутер номериңизди жана 'Скорость' деген сөздү жазыңыз. "
-        "Биринчи жеткиликтүү оператор сиз менен байланышат! 🥰\n\n",
-        reply_markup=contact_kg
-    )
-
-@dp.callback_query_handler(text='2.6.3')
-async def kg_issue_slow_speed_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Сураныч, бир билдирүүдө биздин операторго эсеп номериңизди, скутер номериңизди жана 'Скорость' деген сөздү жазыңыз. "
-        "Биринчи жеткиликтүү оператор сиз менен байланышат! 🥰\n\n",
-        reply_markup=contact_kg
-    )
-
-@dp.callback_query_handler(text='2.6.4')
-async def kg_issue_broken_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Сураныч, скутердин номерин жазып, бир билдирүүдө бузулууну сүрөттөп бериңиз. "
-        "Биринчи жеткиликтүү оператор сиз менен байланышат! 🥰\n\n",
-        reply_markup=contact_kg
-    )
-
-@dp.callback_query_handler(text='2.6.5')
-async def kg_issue_off_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Сураныч, бир билдирүүдө биздин операторго эсеп номериңизди, скутердин номериңизди жана 'Выключился' деген сөздү жазыңыз. "
-        "Биринчи жеткиликтүү оператор сиз менен байланышат! 🥰\n\n",
-        reply_markup=contact_kg
-    )
-
-@dp.callback_query_handler(text='2.6.6')
-async def kg_issue_error_handler(call: types.CallbackQuery):
-    await call.message.edit_text(
-        "Сураныч, аккаунтуңуздун номерин, скутердин номерин жана дисплейдеги катаны биздин операторго бир билдирүү менен жазыңыз. "
-        "Биринчи жеткиликтүү оператор сиз менен байланышат! 🥰\n\n",
-        reply_markup=contact_kg
-    )
-
-@dp.callback_query_handler(text='2.7.1')
-async def kg_registration_phone_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    vidid = 9  # Replace with actual message_id
-    msg = "Урматтуу каардар, телефон номери аркылуу катталуу үчүн видеодогудай кадамдарды кайталаңыз.\n\n"
-    msg += "Эгер дагы эле жардам керек болсо /start басыныз"
-    await bot.copy_message(
-        chat_id=call.message.chat.id,
-        from_chat_id=CHANNEL_ID,
-        message_id=vidid,
-        caption=msg
-    )
-
-@dp.callback_query_handler(text='2.7.2')
-async def kg_registration_telegram_handler(call: types.CallbackQuery):
-    await call.message.edit_reply_markup()
-    vidid = 8 # Replace with actual message_id
-    msg = "Урматтуу каардар, телеграм аркылуу катталуу үчүн видеодогудай кадамдарды кайталаңыз.\n\n"
-    msg += "Эгер дагы эле жардам керек болсо /start басыныз"
-
-    await bot.copy_message(
-        chat_id=call.message.chat.id,
-        from_chat_id=CHANNEL_ID,
-        message_id=vidid,
-        caption=msg
-    )
-
