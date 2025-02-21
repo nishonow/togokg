@@ -3,11 +3,13 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton
 import asyncio
 from config import ADMINS
-from loader import dp, bot, db
+from core.db import get_user_ids, count_users, get_all_ratings
+from loader import dp, bot
 
 menu = ReplyKeyboardMarkup(resize_keyboard=True)
 menu.add(KeyboardButton(text='Пользователи'))
 menu.add(KeyboardButton(text='Отправить сообщение'))
+menu.add(KeyboardButton(text='Посмотреть оценку'))
 
 cancel = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -19,10 +21,17 @@ cancel = InlineKeyboardMarkup(
 async def welcome_admin(message: Message):
     await message.answer("Добро пожаловать, администратор, что вы хотите?", reply_markup=menu)
 
+@dp.message_handler(user_id=ADMINS, text='Посмотреть оценку')
+async def show_ratings(message: types.Message):
+    all_ratings = await get_all_ratings()
+    ratings = [rating[0] for rating in all_ratings]  # Extract the rating values from the tuples
+    average = sum(ratings) / len(ratings) if ratings else 0
+    await message.answer(f"Средняя оценка: {average}\n\n"
+                         f"Все оценки: {len(ratings)}")
 
 @dp.message_handler(user_id=ADMINS, text='Пользователи')
 async def get_users_count(message: types.Message):
-    total_users = await db.count_users()
+    total_users = await count_users()
 
     await message.answer(f"У нас {total_users} пользователей.")
 
@@ -38,27 +47,20 @@ async def no_msg_all(call: CallbackQuery, state: FSMContext):
 
 @dp.message_handler(state='msg_all', content_types=types.ContentTypes.ANY)
 async def msg_to_all(message: types.Message, state: FSMContext):
-    total_users_id = await db.get_user_ids()
-    print(total_users_id)
+    await state.finish()
+    total_users_id = await get_user_ids()
     msg_id = message.message_id
     from_chat = message.chat.id
     success = 0
     error = 0
-
     for idx, user_id in enumerate(total_users_id):
         try:
             await bot.copy_message(chat_id=user_id, from_chat_id=from_chat, message_id=msg_id)
             success += 1
 
-            await asyncio.sleep(0.05)  # ~50ms delay
-
-
-            if (idx + 1) % 30 == 0:
-                await asyncio.sleep(1)
-
         except Exception as e:
             error += 1
+        await asyncio.sleep(0.04)
 
     await message.answer(f"✅ Ваше сообщение отправлено всем пользователям.\n\n"
                          f"Отправлено: {success}\nНе отправлено: {error}")
-    await state.finish()

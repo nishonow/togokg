@@ -1,6 +1,7 @@
 from aiogram.types import Message
+from core.db import user_exists, add_user
 from core.keys import main_menu, to_bot
-from loader import dp, db
+from loader import dp
 
 @dp.message_handler(text='/start')
 async def new_user(message: Message):
@@ -8,8 +9,8 @@ async def new_user(message: Message):
     name = message.from_user.first_name
     username = message.from_user.username
 
-    if not await db.user_exists(telegram_id):
-        await db.add_user(telegram_id, name, username)
+    if not await user_exists(telegram_id):
+        await add_user(telegram_id, name, username)
 
     await message.answer("Здравствуйте! Вас приветствует служба поддержки ToGo.Kgz. Пожалуйста выберите язык обслуживания😇\n\n"
                          "Саламатсызбы! ToGo.Kgz колдоо тобуна кош келиңиз. Кызмат тилин тандаңыз😇",

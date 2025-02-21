@@ -1,5 +1,5 @@
 from aiogram import executor
-from loader import dp, db
+from loader import dp
 import core
 import handlers
 import logging
@@ -10,8 +10,8 @@ logging.basicConfig(
 )
 
 async def on_startup(dp):
-    await db.create()
-    await db.create_table_users()
+    await core.db.init_db()
+
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ to_bot = InlineKeyboardMarkup()
 to_bot.add(InlineKeyboardButton(text='Связяться с ботом/Бот менен байлануу', url='https://t.me/ToGoKgz_Bot'))
 
 contact_ru = InlineKeyboardMarkup()
-contact_ru.add(InlineKeyboardButton(text="Связаться с операт��ром", url='https://t.me/Togokg'))
+contact_ru.add(InlineKeyboardButton(text="Связаться с оператором", url='https://t.me/Togokg'))
 
 contact_kg = InlineKeyboardMarkup(resize_keyboard=True)
 contact_kg.add(InlineKeyboardButton(text="Оператор менен байланышуу", url='https://t.me/Togokg'))
@@ -23,6 +23,15 @@ rating_keyboard.add(
     InlineKeyboardButton("3⭐", callback_data='rating_3'),
     InlineKeyboardButton("4⭐", callback_data='rating_4'),
     InlineKeyboardButton("5⭐", callback_data='rating_5')
+)
+
+rating_keyboard_kg = InlineKeyboardMarkup()
+rating_keyboard_kg.add(
+    InlineKeyboardButton("1⭐", callback_data='ratingkg_1'),
+    InlineKeyboardButton("2⭐", callback_data='ratingkg_2'),
+    InlineKeyboardButton("3⭐", callback_data='ratingkg_3'),
+    InlineKeyboardButton("4⭐", callback_data='ratingkg_4'),
+    InlineKeyboardButton("5⭐", callback_data='ratingkg_5')
 )
 
 # RU Menu Keyboard
@@ -130,7 +139,7 @@ kg_payment_methods_keyboard.add(
 # KG Bonus Replenishment
 kg_bonus_replenishment_keyboard = InlineKeyboardMarkup()
 kg_bonus_replenishment_keyboard.add(
-    InlineKeyboardButton("��анк картасы", callback_data='kg_bonus_card')
+    InlineKeyboardButton("Банк картасы", callback_data='kg_bonus_card')
 ).add(
     InlineKeyboardButton("MBank", callback_data='kg_bonus_mbank')
 ).add(

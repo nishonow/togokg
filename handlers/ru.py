@@ -1,5 +1,9 @@
-from aiogram.types import CallbackQuery, Message
-from loader import dp, bot, db
+import asyncio
+
+from aiogram.types import CallbackQuery, Message, InlineKeyboardMarkup, InlineKeyboardButton
+
+from core.db import save_rating, get_all_ratings
+from loader import dp, bot
 from core.keys import (
     ru_menu_keyboard,
     ru_payment_keyboard,
@@ -21,27 +25,41 @@ RU_REGISTRATION_PHONE = 9
 RU_REGISTRATION_TELEGRAM = 8
 
 # RATING HANDLERS ===========================================================
-@dp.message_handler(text='/rating')
-async def rating(message: Message):
-    user_rating = await db.get_rating(message.from_user.id)
-    if user_rating != 0:
-        await message.answer(f"Вы уже оценили нашего бота на {user_rating} ⭐\n\nВы можете изменить свой оценкa", reply_markup=rating_keyboard)
-    else:
-        await message.answer("Пожалуйста, оцените нашего бота", reply_markup=rating_keyboard)
+# @dp.message_handler(text='/rating')
+# async def rating(message: Message):
+#     user_rating = await db.get_rating(message.from_user.id)
+#     if user_rating != 0:
+#         await message.answer(f"Вы уже оценили нашего бота на {user_rating} ⭐\n\nВы можете изменить свой оценкa", reply_markup=rating_keyboard)
+#     else:
+#         await message.answer("Пожалуйста, оцените нашего бота", reply_markup=rating_keyboard)
 
-@dp.callback_query_handler(lambda c: c.data.startswith('r_'))
+@dp.callback_query_handler(lambda c: c.data.startswith('rating_'))
 async def save_user_rating(call: CallbackQuery):
     rating = int(call.data.split('_')[1])
-    await db.save_rating(call.from_user.id, rating)
+    await save_rating(call.from_user.id, rating)
     await call.message.edit_reply_markup()
     await call.message.answer("Спасибо за вашу оценку!")
 
-@dp.message_handler(text='/see_rating')
-async def see_rating(message: Message):
-    ratings = await db.get_all_ratings()
-    ratings = [rating[0] for rating in ratings]
-    average_rating = sum(ratings) / len(ratings)
-    await message.answer(f"Все оценки {len(ratings)}\n\nСредний рейтинг нашего бота: {average_rating} ⭐")
+
+async def send_ask(chat_id):
+    await asyncio.sleep(60)  # Wait for 1 minute
+
+    keyboard = InlineKeyboardMarkup(row_width=2)
+    keyboard.add(
+        InlineKeyboardButton(text="Да", callback_data="video_solved_yes"),
+        InlineKeyboardButton(text="Нет", callback_data="video_solved_no")
+    )
+
+    await bot.send_message(chat_id, "Помогло ли это видео решить вашу проблему?", reply_markup=keyboard)
+
+@dp.callback_query_handler(lambda c: c.data in ["video_solved_yes", "video_solved_no"])
+async def handle_video_response(call: CallbackQuery):
+    if call.data == "video_solved_yes":
+        await call.message.edit_reply_markup()
+        await call.message.answer("Пожалуйста оцените помощь нашего бота🫶", reply_markup=rating_keyboard)
+    elif call.data == "video_solved_no":
+        await call.message.edit_reply_markup()
+        await call.message.answer("Пожалуйста, свяжитесь с нашим администратором для получения дальнейшей помощи.", reply_markup=contact_ru)
 
 # MENU HANDLERS ==============================================================
 @dp.callback_query_handler(text='lang_ru')
@@ -53,25 +71,28 @@ async def ru_menu(call: CallbackQuery):
 @dp.callback_query_handler(text='ru_payment_issue')
 async def ru_payment(call: CallbackQuery):
     await call.message.edit_reply_markup()
-    await call.message.answer("Выберите ��аш способ оплаты", reply_markup=ru_payment_keyboard)
+    await call.message.answer("Выберите ваш способ оплаты", reply_markup=ru_payment_keyboard)
 
 @dp.callback_query_handler(text='ru_payment_card')
 async def ru_payment_card(call: CallbackQuery):
     await call.message.edit_reply_markup()
     msg = "Уважаемый клиент, статус вашей оплаты ещё не подтверждён. Пожалуйста повторите действия как показано на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RU_PAYMENT_CARD, caption=msg)
+    await send_ask(call.message.chat.id)
 
 @dp.callback_query_handler(text='ru_payment_mbank')
 async def ru_payment_mbank(call: CallbackQuery):
     await call.message.edit_reply_markup()
     msg = "Уважаемый клиент, статус вашей оплаты ещё не подтверждён. Пожалуйста повторите действия как показано на видео. Если запросить статус не удалось, то пожалуйста обратитесь к вашему банку.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RU_PAYMENT_MBANK, caption=msg)
+    await send_ask(call.message.chat.id)
 
 @dp.callback_query_handler(text='ru_payment_odengi')
 async def ru_payment_odengi(call: CallbackQuery):
     await call.message.edit_reply_markup()
     msg = "Уважаемый клиент, статус вашей оплаты ещё не подтверждён. Пожалуйста повторите действия как показано на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RU_PAYMENT_ODENGI, caption=msg)
+    await send_ask(call.message.chat.id)
 
 # BONUS HANDLERS =============================================================
 @dp.callback_query_handler(text='ru_replenish_bonus')
@@ -84,24 +105,28 @@ async def ru_bonus_card(call: CallbackQuery):
     await call.message.edit_reply_markup()
     msg = "Чтобы пополнить бонусы через банковскую карту, пожалуйста, повторите действия как на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RU_BONUS_CARD, caption=msg)
+    await send_ask(call.message.chat.id)
 
 @dp.callback_query_handler(text='ru_bonus_mbank')
 async def ru_bonus_mbank(call: CallbackQuery):
     await call.message.edit_reply_markup()
     msg = "Чтобы пополнить бонусы через MBank, пожалуйста, повторите действия как на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RU_BONUS_CARD, caption=msg)
+    await send_ask(call.message.chat.id)
 
 @dp.callback_query_handler(text='ru_bonus_odengi')
 async def ru_bonus_odengi(call: CallbackQuery):
     await call.message.edit_reply_markup()
-    msg = "Чтобы пополнить бонусы че��ез O!Деньги, пожалуйста, повторите действия как на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
+    msg = "Чтобы пополнить бонусы через O!Деньги, пожалуйста, повторите действия как на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RU_BONUS_ODENGI, caption=msg)
+    await send_ask(call.message.chat.id)
 
 # SCOOTER HANDLERS ===========================================================
 @dp.callback_query_handler(text='ru_rent_scooter')
 async def ru_rent_scooter(call: CallbackQuery):
     await call.message.edit_reply_markup()
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RENT_SCOOTER_ID, caption="Чтобы арендовать самокат, пожалуйста, повторите действия как на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start")
+    await send_ask(call.message.chat.id)
 
 @dp.callback_query_handler(text='ru_scooter_issue')
 async def ru_scooter_issues(call: CallbackQuery):
@@ -151,12 +176,14 @@ async def ru_registration_phone(call: CallbackQuery):
     await call.message.edit_reply_markup()
     msg = "Уважаемый клиент, чтобы зарегистрироваться по номеру телефона, пожалуйста, повторите действия как на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RU_REGISTRATION_PHONE, caption=msg)
+    await send_ask(call.message.chat.id)
 
 @dp.callback_query_handler(text='ru_registration_telegram')
 async def ru_registration_telegram(call: CallbackQuery):
     await call.message.edit_reply_markup()
     msg = "Уважаемый клиент, чтобы зарегистрироваться через телеграм, пожалуйста, повторите действия как на видео.\n\nЕсли вам всё ещё нужна помощь нажмите на /start"
     await bot.copy_message(chat_id=call.message.chat.id, from_chat_id=CHANNEL_ID, message_id=RU_REGISTRATION_TELEGRAM, caption=msg)
+    await send_ask(call.message.chat.id)
 
 # TARIFF HANDLERS ============================================================
 @dp.callback_query_handler(text='ru_tariff_plans')
