@@ -1,7 +1,7 @@
 import aiosqlite
 import datetime
 
-DB_PATH = "../bot.db"
+DB_PATH = "bot.db"
 
 # Initialize database
 async def init_db():
@@ -12,6 +12,7 @@ async def init_db():
             telegram_id INTEGER UNIQUE NOT NULL,
             name TEXT NOT NULL,
             username TEXT,
+            rating INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -54,7 +55,22 @@ async def get_user_ids():
             telegram_ids = [row[0] for row in await cursor.fetchall()]
     return telegram_ids
 
+async def save_rating(telegram_id, rating):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("UPDATE users SET rating = ? WHERE telegram_id = ?", (rating, telegram_id))
+        await db.commit()
 
+async def get_rating(telegram_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT rating FROM users WHERE telegram_id = ?", (telegram_id,)) as cursor:
+            rating = (await cursor.fetchone())[0]
+    return rating
+
+async def get_all_ratings():
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute("SELECT rating FROM users") as cursor:
+            all_ratings = await cursor.fetchall()
+    return all_ratings
 
 async def on_startup():
     await init_db()

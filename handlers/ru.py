@@ -1,5 +1,7 @@
-from aiogram.types import CallbackQuery
-from loader import dp, bot
+from aiogram.types import CallbackQuery, Message
+
+from core.db import save_rating, get_rating, get_all_ratings
+from loader import dp, bot, db
 from core.keys import (
     ru_menu_keyboard,
     ru_payment_keyboard,
@@ -7,10 +9,32 @@ from core.keys import (
     ru_fine_amount_keyboard,
     ru_scooter_problems_keyboard,
     ru_registration_keyboard,
-    contact_ru
+    contact_ru, rating_keyboard
 )
 
 CHANNEL_ID = -1002276623671
+
+@dp.message_handler(text='/rating')
+async def rating(message: Message):
+    user_rating = await db.get_rating(message.from_user.id)
+    if user_rating != 0:
+        await message.answer(f"Вы уже оценили нашего бота на {user_rating} ⭐\n\nВы можете изменить свой оценкa", reply_markup=rating_keyboard)
+    else:
+        await message.answer("Пожалуйста, оцените нашего бота", reply_markup=rating_keyboard)
+
+@dp.callback_query_handler(lambda c: c.data.startswith('r_'))
+async def save_user_rating(call: CallbackQuery):
+    rating = int(call.data.split('_')[1])
+    await db.save_rating(call.from_user.id, rating)
+    await call.message.edit_reply_markup()
+    await call.message.answer("Спасибо за вашу оценку!")
+
+@dp.message_handler(text='/see_rating')
+async def see_rating(message: Message):
+    ratings = await db.get_all_ratings()
+    ratings = [rating[0] for rating in ratings]
+    average_rating = sum(ratings) / len(ratings)
+    await message.answer(f"Все оценки {len(ratings)}\n\nСредний рейтинг нашего бота: {average_rating} ⭐")
 
 @dp.callback_query_handler(text='1')
 async def ru_menu(call: CallbackQuery):

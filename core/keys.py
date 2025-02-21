@@ -16,6 +16,15 @@ contact_ru.add(InlineKeyboardButton(text="Связаться с оператор
 contact_kg = InlineKeyboardMarkup(resize_keyboard=True)
 contact_kg.add(InlineKeyboardButton(text="Оператор менен байланышуу", url='https://t.me/Togokg'))
 
+rating_keyboard = InlineKeyboardMarkup()
+rating_keyboard.add(
+    InlineKeyboardButton("1⭐", callback_data='r_1'),
+    InlineKeyboardButton("2⭐", callback_data='r_2'),
+    InlineKeyboardButton("3⭐", callback_data='r_3'),
+    InlineKeyboardButton("4⭐", callback_data='r_4'),
+    InlineKeyboardButton("5⭐", callback_data='r_5')
+)
+
 # RU Menu Keyboard
 ru_menu_keyboard = InlineKeyboardMarkup()
 ru_menu_keyboard.add(

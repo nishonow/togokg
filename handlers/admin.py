@@ -4,7 +4,7 @@ from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, InlineKey
 import asyncio
 from config import ADMINS
 from core.db import count_users, get_user_ids
-from loader import dp, bot
+from loader import dp, bot, db
 
 menu = ReplyKeyboardMarkup(resize_keyboard=True)
 menu.add(KeyboardButton(text='Пользователи'))
@@ -23,7 +23,7 @@ async def welcome_admin(message: Message):
 
 @dp.message_handler(user_id=ADMINS, text='Пользователи')
 async def get_users_count(message: types.Message):
-    total_users = await count_users()
+    total_users = await db.count_users()
 
     await message.answer(f"У нас {total_users} пользователей.")
 
@@ -39,7 +39,8 @@ async def no_msg_all(call: CallbackQuery, state: FSMContext):
 
 @dp.message_handler(state='msg_all', content_types=types.ContentTypes.ANY)
 async def msg_to_all(message: types.Message, state: FSMContext):
-    total_users_id = await get_user_ids()  # Function to fetch all user IDs
+    total_users_id = await db.get_user_ids()
+    print(total_users_id)
     msg_id = message.message_id
     from_chat = message.chat.id
     success = 0
