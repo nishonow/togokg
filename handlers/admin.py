@@ -3,7 +3,6 @@ from aiogram.dispatcher import FSMContext
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton
 import asyncio
 from config import ADMINS
-from core.db import count_users, get_user_ids
 from loader import dp, bot, db
 
 menu = ReplyKeyboardMarkup(resize_keyboard=True)

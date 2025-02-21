@@ -1,2 +1,2 @@
-from . import db
+from . import postgresql
 from . import keys

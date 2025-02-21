@@ -1,6 +1,4 @@
 from aiogram.types import CallbackQuery, Message
-
-from core.db import save_rating, get_rating, get_all_ratings
 from loader import dp, bot, db
 from core.keys import (
     ru_menu_keyboard,
