@@ -26,13 +26,6 @@ RU_REGISTRATION_PHONE = 19
 RU_REGISTRATION_TELEGRAM = 20
 
 # RATING HANDLERS ===========================================================
-# @dp.message_handler(text='/rating')
-# async def rating(message: Message):
-#     user_rating = await db.get_rating(message.from_user.id)
-#     if user_rating != 0:
-#         await message.answer(f"Вы уже оценили нашего бота на {user_rating} ⭐\n\nВы можете изменить свой оценкa", reply_markup=rating_keyboard)
-#     else:
-#         await message.answer("Пожалуйста, оцените нашего бота", reply_markup=rating_keyboard)
 
 @dp.callback_query_handler(lambda c: c.data.startswith('rating_'))
 async def save_user_rating(call: CallbackQuery):
